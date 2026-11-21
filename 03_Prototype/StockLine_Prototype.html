@@ -1,0 +1,669 @@
+<title>StockLine Prototype</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<style>
+/* Layout: warehouse-console shell — side rail of modules, work area of cards; location codes styled like shelf labels */
+:root{
+  --bg:#eef1f4; --surface:#ffffff; --sunken:#f5f7f9; --line:#d5dbe2; --fg:#16202b; --muted:#566271;
+  --accent:#1f4fbf; --accent-ink:#ffffff; --accent-soft:#e3eafb;
+  --good:#1d7a46; --good-soft:#e1f2e8; --warn:#9a5b00; --warn-soft:#fdf0d8; --bad:#b42318; --bad-soft:#fbe4e2;
+  --label:#fff6c9; --label-ink:#2b2400;
+  --f-display:"Barlow Semi Condensed","Arial Narrow",system-ui,sans-serif;
+  --f-body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Menlo,monospace;
+  --r:8px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0f141a; --surface:#18202a; --sunken:#121920; --line:#2c3846; --fg:#e6ebf1; --muted:#9aa7b6;
+  --accent:#7ea2ff; --accent-ink:#0b1430; --accent-soft:#1d2a4a;
+  --good:#5fd08f; --good-soft:#15301f; --warn:#f2b54b; --warn-soft:#33270e; --bad:#ff8a80; --bad-soft:#3a1715;
+  --label:#3a3410; --label-ink:#fff1a8; color-scheme:dark }}
+:root[data-theme="dark"]{
+  --bg:#0f141a; --surface:#18202a; --sunken:#121920; --line:#2c3846; --fg:#e6ebf1; --muted:#9aa7b6;
+  --accent:#7ea2ff; --accent-ink:#0b1430; --accent-soft:#1d2a4a;
+  --good:#5fd08f; --good-soft:#15301f; --warn:#f2b54b; --warn-soft:#33270e; --bad:#ff8a80; --bad-soft:#3a1715;
+  --label:#3a3410; --label-ink:#fff1a8; color-scheme:dark }
+*{box-sizing:border-box}
+html,body{height:100%}
+#app{min-height:100%;display:flex;flex-direction:column}
+#app>*{flex:1}
+body{background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:14px;line-height:1.5}
+h1,h2,h3{font-family:var(--f-display);font-weight:600;letter-spacing:.01em;margin:0;text-wrap:balance}
+h1{font-size:28px} h2{font-size:20px} h3{font-size:16px}
+button,input,select{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.mono{font-family:var(--f-mono)}
+.muted{color:var(--muted)}
+.tag{display:inline-block;font-family:var(--f-mono);font-size:12px;font-weight:600;padding:1px 7px;border-radius:4px;background:var(--label);color:var(--label-ink);border:1px solid color-mix(in srgb,var(--label-ink) 25%,transparent);white-space:nowrap}
+.chip{display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:600;padding:2px 8px;border-radius:999px;white-space:nowrap}
+.chip.good{background:var(--good-soft);color:var(--good)} .chip.warn{background:var(--warn-soft);color:var(--warn)} .chip.bad{background:var(--bad-soft);color:var(--bad)} .chip.neutral{background:var(--sunken);color:var(--muted);border:1px solid var(--line)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:40px;padding:0 16px;border-radius:var(--r);border:1px solid var(--line);background:var(--surface);cursor:pointer;font-weight:600}
+.btn:hover{border-color:var(--accent)}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.btn.primary:hover{filter:brightness(1.08)}
+.btn.small{min-height:32px;padding:0 10px;font-size:13px}
+.btn.link{border:0;background:none;color:var(--accent);padding:0 4px;min-height:28px}
+.field{display:flex;flex-direction:column;gap:4px;min-width:0}
+.field label{font-size:13px;font-weight:600}
+.field input,.field select{min-height:42px;padding:0 10px;border:1px solid var(--line);border-radius:var(--r);background:var(--surface);width:100%}
+.field .hint{font-size:12px;color:var(--muted)}
+.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+@media (max-width:640px){.grid2,.grid3{grid-template-columns:minmax(0,1fr)}}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;min-width:560px;font-variant-numeric:tabular-nums}
+th{text-align:left;font-size:12px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);font-weight:600;padding:10px 12px;border-bottom:1px solid var(--line);background:var(--sunken)}
+td{padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:middle}
+tr:last-child td{border-bottom:0}
+td.num,th.num{text-align:right}
+.msg{padding:10px 12px;border-radius:var(--r);font-size:13px}
+.msg.bad{background:var(--bad-soft);color:var(--bad)} .msg.warn{background:var(--warn-soft);color:var(--warn)} .msg.good{background:var(--good-soft);color:var(--good)}
+
+/* login */
+.login{min-height:100%;display:grid;place-items:center;padding-block:32px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.login .card{width:100%;max-width:420px;padding:28px;gap:16px}
+.brand{display:flex;align-items:center;gap:10px}
+.brand .mark{width:34px;height:34px;border-radius:7px;background:var(--accent);color:var(--accent-ink);display:grid;place-items:center;font-family:var(--f-display);font-weight:700;font-size:18px}
+.brand .name{font-family:var(--f-display);font-size:22px;font-weight:700}
+.demo-banner{font-size:12px;color:var(--muted);border:1px dashed var(--line);border-radius:var(--r);padding:8px 10px}
+
+/* shell */
+.shell{display:flex;min-height:100%}
+.rail{width:232px;flex:none;background:var(--surface);border-right:1px solid var(--line);padding:16px 12px;display:flex;flex-direction:column;gap:14px;padding-left:max(12px,env(safe-area-inset-left,0px))}
+.rail nav{display:flex;flex-direction:column;gap:2px}
+.navgroup{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);padding:10px 10px 4px;font-weight:600}
+.navbtn{display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;text-align:left;border:0;background:none;padding:9px 10px;border-radius:7px;cursor:pointer;font-weight:500}
+.navbtn:hover{background:var(--sunken)}
+.navbtn[aria-current="page"]{background:var(--accent-soft);color:var(--accent);font-weight:600}
+.navbtn .count{font-family:var(--f-mono);font-size:11px;background:var(--bad);color:#fff;border-radius:999px;padding:0 6px}
+.main{flex:1;min-width:0;display:flex;flex-direction:column}
+.topbar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding-block:12px;padding-left:24px;padding-right:max(24px,env(safe-area-inset-right,0px));border-bottom:1px solid var(--line);background:var(--surface)}
+.who{display:flex;align-items:center;gap:10px;font-size:13px}
+.content{padding-block:24px;padding-left:24px;padding-right:max(24px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:18px;max-width:1180px;width:100%}
+.pagehead{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap}
+.pagehead p{margin:4px 0 0;color:var(--muted)}
+@media (max-width:820px){
+  .shell{flex-direction:column}
+  .rail{width:100%;border-right:0;border-bottom:1px solid var(--line);padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+  .rail nav{flex-direction:row;overflow-x:auto;gap:4px}
+  .navgroup{display:none}
+  .navbtn{white-space:nowrap;width:auto}
+  .content,.topbar{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+}
+
+/* dashboard */
+.tiles{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+@media (max-width:900px){.tiles{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.tile{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px 16px}
+.tile .k{font-size:12px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.05em}
+.tile .v{font-family:var(--f-display);font-size:32px;font-weight:700;font-variant-numeric:tabular-nums}
+.tile.alert{border-color:var(--bad)} .tile.alert .v{color:var(--bad)}
+.cols{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:18px}
+@media (max-width:900px){.cols{grid-template-columns:minmax(0,1fr)}}
+.alertrow{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--line)}
+.alertrow:last-child{border-bottom:0}
+
+/* scan station */
+.station{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:18px;align-items:start}
+@media (max-width:900px){.station{grid-template-columns:minmax(0,1fr)}}
+.scanbox{border:2px dashed var(--line);border-radius:10px;padding:16px;display:flex;flex-direction:column;gap:12px;background:var(--sunken)}
+.viewfinder{height:120px;border-radius:8px;background:#11161c;display:grid;place-items:center;position:relative;overflow:hidden}
+.viewfinder::before{content:"";width:62%;height:56%;border:2px solid #ffffffcc;border-radius:6px}
+.viewfinder span{position:absolute;bottom:8px;left:0;right:0;text-align:center;color:#ffffffd9;font-size:12px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end}
+.row .field{flex:1 1 180px}
+.prodcard{border:1px solid var(--line);border-radius:10px;padding:14px;display:flex;flex-direction:column;gap:8px;background:var(--surface)}
+.prodcard .title{font-weight:600;font-size:16px}
+.attrs{display:flex;gap:6px;flex-wrap:wrap}
+.locs{display:flex;flex-direction:column;gap:6px}
+.locline{display:flex;justify-content:space-between;align-items:center;gap:8px;font-variant-numeric:tabular-nums}
+.empty{color:var(--muted);font-size:13px;padding:8px 0}
+
+/* qr label */
+.label{display:inline-flex;gap:12px;align-items:center;border:1px solid var(--line);border-radius:8px;padding:10px;background:#fff;color:#111}
+.label .qr{width:96px;height:96px}
+.label .qr img,.label .qr canvas{width:96px!important;height:96px!important}
+.label .t{font-size:13px;font-weight:600}
+.label .c{font-family:var(--f-mono);font-size:12px}
+
+.toast{position:fixed;right:max(16px,env(safe-area-inset-right,0px));bottom:calc(16px + env(safe-area-inset-bottom,0px));background:var(--fg);color:var(--bg);padding:10px 14px;border-radius:8px;font-weight:500;box-shadow:0 6px 24px #0003;max-width:min(420px,calc(100vw - 32px));z-index:20}
+.filters{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
+.filters .field{flex:1 1 160px}
+.split{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:18px;align-items:start}
+@media (max-width:900px){.split{grid-template-columns:minmax(0,1fr)}}
+@media (prefers-reduced-motion:no-preference){.toast{animation:pop .18s ease-out}@keyframes pop{from{transform:translateY(8px);opacity:.4}to{transform:none;opacity:1}}}
+#qr-reader{display:none}
+</style>
+
+<div id="app"></div>
+<div id="qr-reader"></div>
+<div id="toast" class="toast" hidden role="status" aria-live="polite"></div>
+
+<script>
+(function(){
+"use strict";
+const $app = document.getElementById("app");
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const today = () => new Date();
+const fmtTime = d => d.toLocaleString([], {day:"2-digit", month:"short", hour:"2-digit", minute:"2-digit"});
+const isoDate = d => d.toISOString().slice(0,10);
+let seq = 100;
+const nid = p => p + (++seq);
+
+/* ---------- sample data (fictional, for demonstration) ---------- */
+function seed(){
+  const now = Date.now(), h = 3600e3;
+  const S = {
+    users:[
+      {id:"u1", name:"Admin (demo)", email:"admin@demo.my", role:"admin", status:"active", password:"demo123"},
+      {id:"u2", name:"Staff (demo)", email:"staff@demo.my", role:"staff", status:"active", password:"demo123"}
+    ],
+    categories:[{id:"c1",name:"Brakes"},{id:"c2",name:"Filters"},{id:"c3",name:"Ignition"},{id:"c4",name:"Wipers"}],
+    suppliers:[
+      {id:"s1", name:"Sample Auto Parts Trading", contactPerson:"Sales desk", phone:"03-0000 0001", email:"orders@sample-autoparts.example", status:"active"},
+      {id:"s2", name:"Sample Motor Supply", contactPerson:"Account team", phone:"03-0000 0002", email:"sales@sample-motor.example", status:"active"},
+      {id:"s3", name:"Old Parts Vendor", contactPerson:"—", phone:"03-0000 0003", email:"info@old-parts.example", status:"inactive"}
+    ],
+    locations:[
+      {id:"l1", zone:"A", rack:"01", shelf:"01", desc:"Front counter, brake parts"},
+      {id:"l2", zone:"A", rack:"01", shelf:"02", desc:"Front counter, brake parts"},
+      {id:"l3", zone:"A", rack:"02", shelf:"03", desc:"Counter drawer, small parts"},
+      {id:"l4", zone:"B", rack:"01", shelf:"01", desc:"Storeroom, overflow"},
+      {id:"l5", zone:"B", rack:"02", shelf:"02", desc:"Storeroom, filters"},
+      {id:"l6", zone:"C", rack:"03", shelf:"02", desc:"Storeroom, ignition"}
+    ],
+    products:[
+      {id:"p1", name:"Front Brake Pad", brand:"Brakeline", pn:"BL-F2041", model:"Myvi 2018–2022", sku:"BLF2041-MYV", barcode:"9550000000011", cat:"c1", sup:"s1", unit:"set", reorder:5},
+      {id:"p2", name:"Front Brake Pad", brand:"Brakeline", pn:"BL-F2052", model:"Saga 2016–2022", sku:"BLF2052-SAG", barcode:"9550000000028", cat:"c1", sup:"s1", unit:"set", reorder:5},
+      {id:"p3", name:"Front Brake Pad", brand:"Brakeline", pn:"BL-F2063", model:"City 2014–2019", sku:"BLF2063-CTY", barcode:"9550000000035", cat:"c1", sup:"s1", unit:"set", reorder:5},
+      {id:"p4", name:"Oil Filter", brand:"FilterCo", pn:"FC-0115", model:"Myvi / Axia", sku:"FC0115", barcode:"9550000000042", cat:"c2", sup:"s2", unit:"pcs", reorder:4},
+      {id:"p5", name:"Oil Filter", brand:"FilterCo", pn:"FC-0230", model:"Saga / Persona", sku:"FC0230", barcode:"9550000000059", cat:"c2", sup:"s2", unit:"pcs", reorder:4},
+      {id:"p6", name:"Spark Plug", brand:"Voltex", pn:"VX-K16", model:"Myvi 1.3", sku:"VXK16", barcode:"9550000000066", cat:"c3", sup:"s1", unit:"pcs", reorder:6},
+      {id:"p7", name:"Spark Plug", brand:"Voltex", pn:"VX-K20", model:"City 1.5", sku:"VXK20", barcode:"9550000000073", cat:"c3", sup:"s1", unit:"pcs", reorder:6},
+      {id:"p8", name:"Wiper Blade 22 in", brand:"Generic", pn:"", model:"Universal", sku:"WB22", barcode:"QR-000008", qrGenerated:true, cat:"c4", sup:"s2", unit:"pcs", reorder:10}
+    ],
+    stock:{"p1|l1":6,"p2|l1":3,"p2|l4":1,"p3|l2":9,"p4|l5":7,"p5|l5":2,"p6|l6":12,"p7|l6":10,"p8|l3":25},
+    tx:[], alerts:[], audit:[]
+  };
+  const addTx = (t, pid, lid, qty, reason, uid, ago) => S.tx.push({id:nid("t"), type:t, pid, lid, qty, reason, ref:"", uid, at:new Date(now - ago*h)});
+  addTx("IN","p8","l3",25,"DO-2026-118","u2",26);
+  addTx("OUT","p2","l1",-2,"Customer order","u2",5);
+  addTx("OUT","p5","l5",-3,"Customer order","u2",3);
+  addTx("IN","p6","l6",12,"DO-2026-121","u2",2);
+  S.alerts.push({id:"a1", pid:"p2", read:false, at:new Date(now-5*h)}, {id:"a2", pid:"p5", read:false, at:new Date(now-3*h)});
+  S.audit.push(
+    {at:new Date(now-26*h), uid:"u2", action:"STOCK_IN", table:"stock", detail:"WB22 at A-02-03: 0 → 25"},
+    {at:new Date(now-5*h), uid:"u2", action:"STOCK_OUT", table:"stock", detail:"BLF2052-SAG at A-01-01: 5 → 3"},
+    {at:new Date(now-3*h), uid:"u2", action:"STOCK_OUT", table:"stock", detail:"FC0230 at B-02-02: 5 → 2"},
+    {at:new Date(now-2*h), uid:"u2", action:"STOCK_IN", table:"stock", detail:"VXK16 at C-03-02: 0 → 12"}
+  );
+  return S;
+}
+let S = seed();
+const ui = {user:null, view:"dashboard", scan:{}, flash:{}, edit:{}};
+
+/* ---------- lookups ---------- */
+const P = id => S.products.find(p => p.id === id);
+const L = id => S.locations.find(l => l.id === id);
+const U = id => S.users.find(u => u.id === id);
+const locCode = l => l ? `${l.zone}-${l.rack}-${l.shelf}` : "?";
+const qtyAt = (pid, lid) => S.stock[pid + "|" + lid] || 0;
+const totalQty = pid => Object.entries(S.stock).filter(([k]) => k.startsWith(pid + "|")).reduce((a,[,v]) => a+v, 0);
+const locsOf = pid => S.locations.filter(l => qtyAt(pid, l.id) > 0).map(l => ({l, q:qtyAt(pid, l.id)}));
+const isLow = p => totalQty(p.id) <= p.reorder;
+const variant = p => [p.pn && "Part no. " + p.pn, p.model && "Fits " + p.model].filter(Boolean).join(" · ");
+const pname = p => `${p.brand} ${p.name}`;
+const isAdmin = () => ui.user && ui.user.role === "admin";
+const unread = () => S.alerts.filter(a => !a.read).length;
+
+function log(action, table, detail){ S.audit.unshift({at:today(), uid:ui.user.id, action, table, detail}); }
+function checkLow(p){
+  if (isLow(p) && !S.alerts.some(a => a.pid === p.id && !a.read)) S.alerts.unshift({id:nid("a"), pid:p.id, read:false, at:today()});
+}
+function findByCode(code){
+  code = String(code||"").trim();
+  if (!code) return null;
+  return S.products.find(p => p.barcode === code || p.sku.toLowerCase() === code.toLowerCase()) || null;
+}
+function search(q){
+  const toks = String(q||"").toLowerCase().replace(/[?,]/g," ").split(/\s+/).filter(t => t && !["where","is","the","for","in","stock","how","many","find","part"].includes(t));
+  if (!toks.length) return S.products.slice();
+  return S.products.filter(p => {
+    const hay = [p.brand,p.name,p.pn,p.model,p.sku,p.barcode].join(" ").toLowerCase();
+    return toks.every(t => hay.split(/\s+/).some(w => w === t || w.startsWith(t)) || hay.includes(t));
+  });
+}
+
+let toastTimer;
+function toast(text){
+  const t = document.getElementById("toast");
+  t.textContent = text; t.hidden = false;
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => t.hidden = true, 3200);
+}
+
+/* ---------- navigation ---------- */
+const NAV = [
+  {group:"Daily work"},
+  {id:"dashboard", label:"Dashboard"},
+  {id:"stockin", label:"Stock-in"},
+  {id:"stockout", label:"Stock-out"},
+  {id:"adjust", label:"Stock adjustment"},
+  {id:"stockview", label:"Stock and location"},
+  {group:"Management", admin:true},
+  {id:"products", label:"Products", admin:true},
+  {id:"suppliers", label:"Suppliers", admin:true},
+  {id:"locations", label:"Locations", admin:true},
+  {id:"users", label:"Users", admin:true},
+  {group:"Reporting", admin:true},
+  {id:"reports", label:"Reports", admin:true},
+  {id:"audit", label:"Audit trail", admin:true}
+];
+function go(view){ ui.view = view; ui.scan = {}; ui.flash = {}; ui.edit = {}; render(); window.scrollTo(0,0); }
+
+/* ---------- render ---------- */
+function render(){
+  if (!ui.user){ $app.innerHTML = loginView(); return; }
+  const items = NAV.filter(n => !n.admin || isAdmin()).map(n => n.group
+    ? `<div class="navgroup">${esc(n.group)}</div>`
+    : `<button class="navbtn" data-go="${n.id}" ${ui.view===n.id?'aria-current="page"':""}>${esc(n.label)}${n.id==="dashboard"&&unread()?`<span class="count">${unread()}</span>`:""}</button>`).join("");
+  const view = (VIEWS[ui.view] || VIEWS.dashboard)();
+  $app.innerHTML = `<div class="shell">
+    <aside class="rail"><div class="brand"><div class="mark" aria-hidden="true">S</div><div class="name">StockLine</div></div><nav aria-label="Main menu">${items}</nav></aside>
+    <div class="main">
+      <header class="topbar"><span class="chip neutral">Prototype · sample data</span>
+        <div class="who"><span>${esc(ui.user.name)} · <strong>${ui.user.role==="admin"?"Administrator":"Staff"}</strong></span><button class="btn small" data-act="logout">Log out</button></div></header>
+      <main class="content">${view}</main>
+    </div></div>`;
+  afterRender();
+}
+function afterRender(){
+  document.querySelectorAll("[data-qr]").forEach(el => {
+    if (el.dataset.done) return; el.dataset.done = "1";
+    if (window.QRCode) new QRCode(el, {text:el.dataset.qr, width:192, height:192, correctLevel:QRCode.CorrectLevel.M});
+    else el.textContent = "QR library unavailable";
+  });
+}
+
+function loginView(){
+  const err = ui.flash.login ? `<div class="msg bad">${esc(ui.flash.login)}</div>` : "";
+  return `<div class="login"><form class="card" id="loginForm" novalidate>
+    <div class="brand"><div class="mark" aria-hidden="true">S</div><div class="name">StockLine</div></div>
+    <div><h1>Log in</h1><p class="muted" style="margin:4px 0 0">Record and locate stock by scanning.</p></div>
+    ${err}
+    <div class="field"><label for="lgEmail">Email</label><input id="lgEmail" type="email" autocomplete="username" value="staff@demo.my"></div>
+    <div class="field"><label for="lgPass">Password</label><input id="lgPass" type="password" autocomplete="current-password" value="demo123"></div>
+    <button class="btn primary" type="submit">Log in</button>
+    <div class="demo-banner">Prototype for FYP demonstration. Demo accounts: <span class="mono">staff@demo.my</span> or <span class="mono">admin@demo.my</span>, password <span class="mono">demo123</span>. All products, suppliers and figures are fictional sample data and reset when the page reloads.</div>
+    <div class="row"><button class="btn small" type="button" data-fill="staff@demo.my">Use staff account</button><button class="btn small" type="button" data-fill="admin@demo.my">Use admin account</button></div>
+  </form></div>`;
+}
+
+function head(title, sub, right=""){
+  return `<div class="pagehead"><div><h1>${esc(title)}</h1>${sub?`<p>${esc(sub)}</p>`:""}</div>${right}</div>`;
+}
+function statusChip(p){
+  const t = totalQty(p.id);
+  if (t === 0) return `<span class="chip bad">Out of stock</span>`;
+  if (t <= p.reorder) return `<span class="chip warn">Low stock</span>`;
+  return `<span class="chip good">In stock</span>`;
+}
+
+/* dashboard */
+function dashboard(){
+  const units = Object.values(S.stock).reduce((a,b)=>a+b,0);
+  const low = S.products.filter(isLow).length;
+  const t0 = new Date(); t0.setHours(0,0,0,0);
+  const txToday = S.tx.filter(t => t.at >= t0).length;
+  const alerts = S.alerts.filter(a => !a.read);
+  const alertHtml = alerts.length ? alerts.map(a => { const p = P(a.pid); return `<div class="alertrow">
+      <div><div style="font-weight:600">${esc(pname(p))}</div><div class="muted" style="font-size:13px">${esc(variant(p)) || "No variant"} · <span class="mono">${esc(p.sku)}</span></div>
+      <div class="attrs" style="margin-top:4px">${locsOf(p.id).map(x=>`<span class="tag">${locCode(x.l)}</span>`).join("") || '<span class="chip bad">No stock in any location</span>'}</div></div>
+      <div style="text-align:right"><div class="mono" style="font-weight:600;color:var(--bad)">${totalQty(p.id)} / ${p.reorder}</div><button class="btn link" data-act="readAlert" data-id="${a.id}">Mark as read</button></div></div>`; }).join("")
+    : `<div class="empty">No unread low-stock alerts.</div>`;
+  const recent = S.tx.slice().sort((a,b)=>b.at-a.at).slice(0,6).map(t => { const p=P(t.pid); return `<tr><td>${fmtTime(t.at)}</td><td>${typeChip(t.type)}</td><td>${esc(pname(p))}<div class="muted" style="font-size:12px">${esc(variant(p))}</div></td><td><span class="tag">${locCode(L(t.lid))}</span></td><td class="num mono">${t.qty>0?"+":""}${t.qty}</td><td>${esc(U(t.uid)?.name)}</td></tr>`; }).join("");
+  return head("Dashboard", "Today's stock position and items that need reordering.") + `
+    <div class="tiles">
+      <div class="tile"><div class="k">Products (SKUs)</div><div class="v">${S.products.length}</div></div>
+      <div class="tile"><div class="k">Units in stock</div><div class="v">${units}</div></div>
+      <div class="tile ${low?"alert":""}"><div class="k">Low-stock items</div><div class="v">${low}</div></div>
+      <div class="tile"><div class="k">Transactions today</div><div class="v">${txToday}</div></div>
+    </div>
+    <div class="cols">
+      <section class="card"><h2>Low-stock alerts</h2><div>${alertHtml}</div></section>
+      <section class="card"><h2>Quick actions</h2><div class="grid2">
+        <button class="btn primary" data-go="stockin">Scan stock-in</button><button class="btn primary" data-go="stockout">Scan stock-out</button>
+        <button class="btn" data-go="stockview">Find an item</button><button class="btn" data-go="adjust">Adjust after count</button></div>
+        <p class="muted" style="margin:0;font-size:13px">Scanning reads the product's barcode or the system's QR label, so staff do not type item details.</p></section>
+    </div>
+    <section class="card"><h2>Recent transactions</h2><div class="tablewrap"><table><thead><tr><th>Time</th><th>Type</th><th>Product</th><th>Location</th><th class="num">Qty</th><th>User</th></tr></thead><tbody>${recent}</tbody></table></div></section>`;
+}
+function typeChip(t){ return t==="IN"?`<span class="chip good">IN</span>`:t==="OUT"?`<span class="chip bad">OUT</span>`:`<span class="chip warn">ADJUST</span>`; }
+
+/* scan station shared */
+function scanner(){
+  const opts = S.products.map(p => `<option value="${esc(p.barcode)}">${esc(pname(p))} ${esc(variant(p))} — ${esc(p.barcode)}</option>`).join("");
+  return `<div class="scanbox">
+    <div class="viewfinder" aria-hidden="true"><span>Camera scanning runs in the full system</span></div>
+    <div class="row"><div class="field"><label for="scanCode">Barcode / QR code</label><input id="scanCode" class="mono" placeholder="Scan, type or paste a code" value="${esc(ui.scan.code||"")}"></div><button class="btn primary" data-act="lookup">Find</button></div>
+    <div class="row"><div class="field"><label for="scanPhoto">Scan from a photo</label><input id="scanPhoto" type="file" accept="image/*" capture="environment"><span class="hint">Take or choose a photo of a barcode or QR label; the code is read in the browser.</span></div></div>
+    <div class="row"><div class="field"><label for="scanDemo">Demo: simulate a scan</label><select id="scanDemo"><option value="">Choose a sample part or shelf label…</option><optgroup label="Parts">${opts}</optgroup><optgroup label="Shelf labels">${S.locations.map(l=>`<option value="LOC:${locCode(l)}">Shelf ${locCode(l)} — ${esc(l.desc)}</option>`).join("")}</optgroup></select><span class="hint">Scan the part, then scan the shelf label to set its location.</span></div></div>
+  </div>`;
+}
+function productCard(p){
+  const locs = locsOf(p.id);
+  return `<div class="prodcard"><div class="title">${esc(pname(p))}</div>
+    <div class="attrs">${p.pn?`<span class="chip neutral mono">${esc(p.pn)}</span>`:""}${p.model?`<span class="chip neutral">Fits ${esc(p.model)}</span>`:""}<span class="chip neutral mono">${esc(p.sku)}</span>${statusChip(p)}</div>
+    <div class="locs">${locs.length?locs.map(x=>`<div class="locline"><span class="tag">${locCode(x.l)}</span><span class="muted" style="flex:1;font-size:12px">${esc(x.l.desc)}</span><span class="mono">${x.q} ${esc(p.unit)}</span></div>`).join(""):'<div class="empty">Not stored in any location yet.</div>'}</div>
+    <div class="muted" style="font-size:13px">Total <strong class="mono">${totalQty(p.id)}</strong> · reorder level <span class="mono">${p.reorder}</span></div></div>`;
+}
+function locOptions(sel, pid, onlyStocked){
+  return S.locations.filter(l => !onlyStocked || qtyAt(pid,l.id)>0).map(l => `<option value="${l.id}" ${sel===l.id?"selected":""}>${locCode(l)} — ${esc(l.desc)}${pid?` (${qtyAt(pid,l.id)} on hand)`:""}</option>`).join("");
+}
+function station(kind){
+  const p = ui.scan.pid ? P(ui.scan.pid) : null;
+  const msg = ui.flash.scan ? `<div class="msg ${ui.flash.scanType||"bad"}">${esc(ui.flash.scan)}</div>` : "";
+  let form = `<div class="empty">Scan an item to continue.</div>`;
+  if (p){
+    if (kind==="IN") form = `<form id="txForm" class="card" novalidate><h3>Record stock-in</h3>
+      <div class="field"><label for="txLoc">Storage location</label><select id="txLoc">${locOptions(ui.scan.loc || locsOf(p.id)[0]?.l.id, p.id)}</select><span class="hint">${ui.scan.loc?`Set by scanning shelf label ${locCode(S.locations.find(l=>l.id===ui.scan.loc))}.`:"Scan the shelf's QR label to set this, or choose from the list."}</span></div>
+      <div class="grid2"><div class="field"><label for="txQty">Quantity received</label><input id="txQty" type="number" min="1" inputmode="numeric" value="${esc(ui.edit.qty||"")}"></div>
+      <div class="field"><label for="txRef">Reference no.</label><input id="txRef" placeholder="e.g. DO number" value="${esc(ui.edit.ref||"")}"></div></div>
+      <button class="btn primary" type="submit">Confirm stock-in</button></form>`;
+    if (kind==="OUT") form = `<form id="txForm" class="card" novalidate><h3>Record stock-out</h3>
+      ${locsOf(p.id).length?`<div class="field"><label for="txLoc">Take from location</label><select id="txLoc">${locOptions(ui.scan.loc,p.id,true)}</select><span class="hint">Scan the shelf label to confirm where the part is taken from.</span></div>
+      <div class="grid2"><div class="field"><label for="txQty">Quantity to issue</label><input id="txQty" type="number" min="1" inputmode="numeric"></div>
+      <div class="field"><label for="txRef">Reason</label><select id="txRef"><option>Customer order</option><option>Damaged</option><option>Transfer out</option><option>Other</option></select></div></div>
+      <button class="btn primary" type="submit">Confirm stock-out</button>`:`<div class="msg bad">This item has no stock in any location.</div>`}</form>`;
+    if (kind==="ADJ") form = `<form id="txForm" class="card" novalidate><h3>Record adjustment</h3>
+      <div class="field"><label for="txLoc">Location counted</label><select id="txLoc">${locOptions(locsOf(p.id)[0]?.l.id,p.id)}</select></div>
+      <div class="grid2"><div class="field"><label for="txQty">Counted quantity</label><input id="txQty" type="number" min="0" inputmode="numeric"></div>
+      <div class="field"><label for="txRef">Reason</label><input id="txRef" placeholder="e.g. Monthly count"></div></div>
+      <button class="btn primary" type="submit">Save adjustment</button></form>`;
+  }
+  return `<div class="station"><div class="card"><h2>1 · Scan the item</h2>${scanner()}${msg}${p?productCard(p):""}</div><div class="card"><h2>2 · Enter details</h2>${form}</div></div>`;
+}
+const stockin = () => head("Stock-in", "Record goods received and put them on a shelf.") + station("IN");
+const stockout = () => head("Stock-out", "Record goods issued. The system blocks issuing more than is on hand.") + station("OUT");
+const adjust = () => head("Stock adjustment", "Correct the recorded quantity after a physical count.") + station("ADJ");
+
+/* stock view */
+function stockview(){
+  const q = ui.edit.q || "";
+  const zone = ui.edit.zone || "";
+  const res = search(q);
+  const rows = [];
+  res.forEach(p => {
+    const locs = locsOf(p.id).filter(x => !zone || x.l.zone === zone);
+    if (!locs.length && !zone) rows.push(`<tr><td>${esc(pname(p))}</td><td>${esc(variant(p))||"—"}</td><td class="mono">${esc(p.sku)}</td><td>—</td><td class="num mono">0</td><td>${statusChip(p)}</td></tr>`);
+    locs.forEach(x => rows.push(`<tr><td>${esc(pname(p))}</td><td>${esc(variant(p))||"—"}</td><td class="mono">${esc(p.sku)}</td><td><span class="tag">${locCode(x.l)}</span></td><td class="num mono">${x.q}</td><td>${statusChip(p)}</td></tr>`));
+  });
+  const zones = [...new Set(S.locations.map(l=>l.zone))];
+  return head("Stock and location", "Find where an item is kept and how many are on hand.") + `
+    <section class="card"><div class="filters">
+      <div class="field" style="flex:3 1 260px"><label for="svQ">Search</label><input id="svQ" placeholder="Try: brake pad saga, FC-0230, or a code" value="${esc(q)}"><span class="hint">Type a name, part number, vehicle model, SKU or code. A question such as "where is brake pad for Saga" also works.</span></div>
+      <div class="field"><label for="svZone">Zone</label><select id="svZone"><option value="">All zones</option>${zones.map(z=>`<option ${zone===z?"selected":""}>${z}</option>`).join("")}</select></div>
+      <button class="btn" data-go="stockin">Scan instead</button></div></section>
+    <div class="tablewrap"><table><thead><tr><th>Product</th><th>Variant</th><th>SKU</th><th>Location</th><th class="num">Qty</th><th>Status</th></tr></thead>
+    <tbody>${rows.join("") || `<tr><td colspan="6" class="empty">No item matches “${esc(q)}”. Check the spelling or search by SKU.</td></tr>`}</tbody></table></div>
+    <p class="muted" style="margin:0;font-size:13px">Each row is one product at one location; a product kept in two places appears twice.</p>`;
+}
+
+/* products */
+function products(){
+  const e = ui.edit.product;
+  const list = S.products.map(p => `<tr><td>${esc(pname(p))}<div class="muted" style="font-size:12px">${esc(variant(p))}</div></td><td class="mono">${esc(p.sku)}</td><td class="mono">${esc(p.barcode)}${p.qrGenerated?' <span class="chip neutral">QR</span>':""}</td><td class="num mono">${totalQty(p.id)}</td><td class="num mono">${p.reorder}</td><td><button class="btn link" data-act="editProduct" data-id="${p.id}">Edit</button></td></tr>`).join("");
+  const cat = S.categories.map(c=>`<option value="${c.id}" ${e&&e.cat===c.id?"selected":""}>${esc(c.name)}</option>`).join("");
+  const sup = S.suppliers.filter(s=>s.status==="active").map(s=>`<option value="${s.id}" ${e&&e.sup===s.id?"selected":""}>${esc(s.name)}</option>`).join("");
+  const err = ui.flash.product ? `<div class="msg bad">${esc(ui.flash.product)}</div>` : "";
+  const v = e || {};
+  const form = `<form id="productForm" class="card" novalidate><h2>${v.id?"Edit product":"Add product"}</h2>${err}
+    <div class="grid2"><div class="field"><label for="pfBrand">Brand</label><input id="pfBrand" value="${esc(v.brand)}"></div><div class="field"><label for="pfName">Product name</label><input id="pfName" value="${esc(v.name)}"></div></div>
+    <div class="grid3"><div class="field"><label for="pfPn">Part number</label><input id="pfPn" class="mono" value="${esc(v.pn)}" placeholder="optional"></div><div class="field"><label for="pfModel">Vehicle model</label><input id="pfModel" value="${esc(v.model)}" placeholder="e.g. Myvi 2018–2022"></div><div class="field"><label for="pfUnit">Unit</label><input id="pfUnit" value="${esc(v.unit||"pcs")}"></div></div>
+    <div class="grid2"><div class="field"><label for="pfSku">SKU</label><input id="pfSku" class="mono" value="${esc(v.sku)}"></div><div class="field"><label for="pfReorder">Reorder level</label><input id="pfReorder" type="number" min="0" value="${esc(v.reorder??5)}"></div></div>
+    <div class="grid2"><div class="field"><label for="pfCat">Category</label><select id="pfCat">${cat}</select></div><div class="field"><label for="pfSup">Supplier</label><select id="pfSup">${sup}</select></div></div>
+    <div class="field"><label for="pfBarcode">Barcode</label><input id="pfBarcode" class="mono" value="${esc(v.qrGenerated?"":v.barcode)}" placeholder="Leave empty if the item has none"><span class="hint">Each version of a part is its own product. Without a barcode, the system generates a QR code and saves it as the barcode.</span></div>
+    <div class="row"><button class="btn primary" type="submit">${v.id?"Save changes":"Save product"}</button>${v.id?'<button class="btn" type="button" data-act="cancelEdit">Cancel</button>':""}</div>
+    ${v.id && v.barcode ? `<div class="field"><span style="font-size:13px;font-weight:600">Printable label</span><div class="label"><div class="qr" data-qr="${esc(v.barcode)}"></div><div><div class="t">${esc(pname(v))}</div><div class="c">${esc(variant(v))}</div><div class="c">${esc(v.sku)}</div><div class="c">${esc(v.barcode)}</div></div></div><span class="hint">Photograph this label and use "Scan from a photo" on a stock screen to test it.</span></div>`:""}
+  </form>`;
+  return head("Products", "Each version of a part (brand, part number, vehicle model) is a separate item with its own code.", `<button class="btn primary" data-act="newProduct">Add product</button>`) + `
+    <div class="split"><div class="tablewrap"><table><thead><tr><th>Product</th><th>SKU</th><th>Barcode / QR</th><th class="num">On hand</th><th class="num">Reorder</th><th></th></tr></thead><tbody>${list}</tbody></table></div>${form}</div>`;
+}
+
+/* suppliers */
+function suppliers(){
+  const rows = S.suppliers.map(s => `<tr><td>${esc(s.name)}</td><td>${esc(s.contactPerson)}</td><td class="mono">${esc(s.phone)}</td><td>${esc(s.email)}</td><td>${s.status==="active"?'<span class="chip good">Active</span>':'<span class="chip neutral">Inactive</span>'}</td><td><button class="btn link" data-act="toggleSupplier" data-id="${s.id}">${s.status==="active"?"Set inactive":"Set active"}</button></td></tr>`).join("");
+  const err = ui.flash.supplier ? `<div class="msg bad">${esc(ui.flash.supplier)}</div>` : "";
+  return head("Suppliers", "Inactive suppliers are kept for history but hidden when adding products.") + `
+    <div class="split"><div class="tablewrap"><table><thead><tr><th>Supplier</th><th>Contact person</th><th>Phone</th><th>Email</th><th>Status</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>
+    <form id="supplierForm" class="card" novalidate><h2>Add supplier</h2>${err}
+      <div class="field"><label for="sfName">Supplier name</label><input id="sfName"></div>
+      <div class="grid2"><div class="field"><label for="sfContact">Contact person</label><input id="sfContact"></div><div class="field"><label for="sfPhone">Phone</label><input id="sfPhone"></div></div>
+      <div class="field"><label for="sfEmail">Email</label><input id="sfEmail" type="email"></div>
+      <button class="btn primary" type="submit">Save supplier</button></form></div>`;
+}
+
+/* locations */
+function locations(){
+  const rows = S.locations.map(l => { const n = S.products.filter(p=>qtyAt(p.id,l.id)>0).length; return `<tr><td><span class="tag">${locCode(l)}</span></td><td>${esc(l.zone)}</td><td>${esc(l.rack)}</td><td>${esc(l.shelf)}</td><td>${esc(l.desc)}</td><td class="num mono">${n}</td></tr>`; }).join("");
+  const err = ui.flash.location ? `<div class="msg bad">${esc(ui.flash.location)}</div>` : "";
+  return head("Locations", "Every shelf has a code: zone, rack and shelf.") + `
+    <div class="split"><div class="tablewrap"><table><thead><tr><th>Code</th><th>Zone</th><th>Rack</th><th>Shelf</th><th>Description</th><th class="num">Items</th></tr></thead><tbody>${rows}</tbody></table></div>
+    <form id="locationForm" class="card" novalidate><h2>Add location</h2>${err}
+      <div class="grid3"><div class="field"><label for="lfZone">Zone</label><input id="lfZone" maxlength="3" placeholder="A"></div><div class="field"><label for="lfRack">Rack</label><input id="lfRack" maxlength="3" placeholder="01"></div><div class="field"><label for="lfShelf">Shelf</label><input id="lfShelf" maxlength="3" placeholder="01"></div></div>
+      <div class="field"><label for="lfDesc">Description</label><input id="lfDesc" placeholder="e.g. Back store, top shelf"></div>
+      <button class="btn primary" type="submit">Save location</button></form></div>
+    <section class="card" style="margin-top:16px"><h2>Shelf labels</h2><p class="muted" style="margin:0 0 12px;font-size:13px">Print and stick one label on each shelf. Scanning a label during stock-in or stock-out sets the location. Each label encodes the location code, so no extra data is stored.</p>
+      <div style="display:flex;flex-wrap:wrap;gap:12px">${S.locations.map(l=>`<div class="label"><div class="qr" data-qr="LOC:${locCode(l)}"></div><div><div class="t">Shelf ${locCode(l)}</div><div class="c">LOC:${locCode(l)}</div><div class="c" style="font-family:inherit">${esc(l.desc)}</div></div></div>`).join("")}</div></section>`;
+}
+
+/* users */
+function users(){
+  const rows = S.users.map(u => `<tr><td>${esc(u.name)}</td><td class="mono">${esc(u.email)}</td><td>${u.role==="admin"?"Administrator":"Staff"}</td><td>${u.status==="active"?'<span class="chip good">Active</span>':'<span class="chip neutral">Inactive</span>'}</td><td>${u.id===ui.user.id?'<span class="muted" style="font-size:12px">You</span>':`<button class="btn link" data-act="toggleUser" data-id="${u.id}">${u.status==="active"?"Deactivate":"Activate"}</button>`}</td></tr>`).join("");
+  const err = ui.flash.user ? `<div class="msg bad">${esc(ui.flash.user)}</div>` : "";
+  return head("Users", "Administrators manage accounts; staff record and look up stock.") + `
+    <div class="split"><div class="tablewrap"><table><thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Status</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>
+    <form id="userForm" class="card" novalidate><h2>Add user</h2>${err}
+      <div class="field"><label for="ufName">Name</label><input id="ufName"></div>
+      <div class="field"><label for="ufEmail">Email</label><input id="ufEmail" type="email"></div>
+      <div class="grid2"><div class="field"><label for="ufRole">Role</label><select id="ufRole"><option value="staff">Staff</option><option value="admin">Administrator</option></select></div>
+      <div class="field"><label for="ufPass">Temporary password</label><input id="ufPass" type="password"><span class="hint">At least 8 characters.</span></div></div>
+      <button class="btn primary" type="submit">Save user</button></form></div>`;
+}
+
+/* reports */
+function reports(){
+  const type = ui.edit.rtype || "level";
+  const from = ui.edit.from || isoDate(new Date(Date.now()-7*864e5)), to = ui.edit.to || isoDate(today());
+  let body;
+  if (type === "level"){
+    body = `<table><thead><tr><th>Product</th><th>Variant</th><th>SKU</th><th>Locations</th><th class="num">Total</th><th class="num">Reorder</th><th>Status</th></tr></thead><tbody>${S.products.map(p=>`<tr><td>${esc(pname(p))}</td><td>${esc(variant(p))||"—"}</td><td class="mono">${esc(p.sku)}</td><td>${locsOf(p.id).map(x=>`<span class="tag">${locCode(x.l)}</span>`).join(" ")||"—"}</td><td class="num mono">${totalQty(p.id)}</td><td class="num mono">${p.reorder}</td><td>${statusChip(p)}</td></tr>`).join("")}</tbody></table>`;
+  } else {
+    const a = new Date(from+"T00:00:00"), b = new Date(to+"T23:59:59");
+    const list = S.tx.filter(t => t.at>=a && t.at<=b).sort((x,y)=>y.at-x.at);
+    body = a>b ? `<div class="msg bad" style="margin:12px">The start date is after the end date. Choose a start date on or before ${esc(to)}.</div>`
+      : `<table><thead><tr><th>Date and time</th><th>Type</th><th>Product</th><th>Location</th><th class="num">Qty change</th><th>Reason / ref.</th><th>User</th></tr></thead><tbody>${list.map(t=>{const p=P(t.pid);return `<tr><td>${fmtTime(t.at)}</td><td>${typeChip(t.type)}</td><td>${esc(pname(p))} <span class="muted">${esc(variant(p))}</span></td><td><span class="tag">${locCode(L(t.lid))}</span></td><td class="num mono">${t.qty>0?"+":""}${t.qty}</td><td>${esc(t.reason)}</td><td>${esc(U(t.uid)?.name)}</td></tr>`;}).join("") || `<tr><td colspan="7" class="empty">No transactions in this period.</td></tr>`}</tbody></table>`;
+  }
+  return head("Reports", "Stock levels now, or every movement in a period.") + `
+    <section class="card"><div class="filters">
+      <div class="field"><label for="rType">Report</label><select id="rType"><option value="level" ${type==="level"?"selected":""}>Stock level</option><option value="move" ${type==="move"?"selected":""}>Stock movement</option></select></div>
+      ${type==="move"?`<div class="field"><label for="rFrom">From</label><input id="rFrom" type="date" value="${from}"></div><div class="field"><label for="rTo">To</label><input id="rTo" type="date" value="${to}"></div>`:""}
+      <span class="muted" style="font-size:13px;flex:1 1 200px">PDF export is part of the full system.</span></div></section>
+    <div class="tablewrap">${body}</div>`;
+}
+
+/* audit */
+function audit(){
+  const f = ui.edit.af || "";
+  const list = S.audit.filter(a => !f || a.action === f);
+  const actions = [...new Set(S.audit.map(a=>a.action))];
+  return head("Audit trail", "Who changed what, and when. Entries cannot be edited.") + `
+    <section class="card"><div class="filters"><div class="field"><label for="aFilter">Action</label><select id="aFilter"><option value="">All actions</option>${actions.map(a=>`<option ${f===a?"selected":""}>${a}</option>`).join("")}</select></div></div></section>
+    <div class="tablewrap"><table><thead><tr><th>Date and time</th><th>User</th><th>Action</th><th>Record</th><th>Change</th></tr></thead><tbody>${list.map(a=>`<tr><td>${fmtTime(a.at)}</td><td>${esc(U(a.uid)?.name)}</td><td class="mono">${esc(a.action)}</td><td class="mono">${esc(a.table)}</td><td>${esc(a.detail)}</td></tr>`).join("") || '<tr><td colspan="5" class="empty">No records found for this filter.</td></tr>'}</tbody></table></div>`;
+}
+
+const VIEWS = {dashboard, stockin, stockout, adjust, stockview, products, suppliers, locations, users, reports, audit};
+
+/* ---------- actions ---------- */
+function findLoc(code){
+  const c = String(code||"").trim().toUpperCase().replace(/^LOC:/,"");
+  return S.locations.find(l => locCode(l).toUpperCase() === c) || null;
+}
+function setScanned(code){
+  const loc = /^LOC:/i.test(String(code).trim()) ? findLoc(code) : null;
+  if (loc){
+    if (!ui.scan.pid){ ui.flash.scan = `Shelf ${locCode(loc)} scanned. Scan the part first, then the shelf.`; ui.flash.scanType = "bad"; render(); return; }
+    ui.scan.loc = loc.id; ui.flash.scan = `Shelf ${locCode(loc)} scanned: location set for this transaction.`; ui.flash.scanType = "good"; render(); return;
+  }
+  if (/^LOC:/i.test(String(code).trim())){ ui.flash.scan = `Shelf label ${code} does not match any location.`; ui.flash.scanType = "bad"; render(); return; }
+  const p = findByCode(code);
+  ui.scan.loc = null;
+  ui.scan.code = code;
+  if (p){ ui.scan.pid = p.id; ui.flash.scan = `Scanned ${pname(p)} ${variant(p)}`.trim(); ui.flash.scanType = "good"; }
+  else { ui.scan.pid = null; ui.flash.scan = `Code ${code} is not registered. Ask an administrator to add the product, or search by name.`; ui.flash.scanType = "bad"; }
+  render();
+}
+async function scanPhoto(file){
+  if (!file) return;
+  if (!window.Html5Qrcode){ ui.flash.scan = "The photo scanner could not load. Type the code instead."; ui.flash.scanType="bad"; render(); return; }
+  try {
+    const reader = new Html5Qrcode("qr-reader");
+    const text = await reader.scanFile(file, false);
+    try { reader.clear(); } catch(e){}
+    setScanned(text);
+  } catch(e){
+    ui.flash.scan = "No barcode or QR code found in that photo. Try again with the code flat, in focus and filling more of the frame."; ui.flash.scanType = "bad"; render();
+  }
+}
+
+function submitTx(kind){
+  const p = P(ui.scan.pid); if (!p) return;
+  const lid = document.getElementById("txLoc")?.value;
+  const qRaw = document.getElementById("txQty")?.value;
+  const ref = (document.getElementById("txRef")?.value || "").trim();
+  const q = Number(qRaw);
+  const l = L(lid);
+  const fail = m => { ui.flash.scan = m; ui.flash.scanType = "bad"; render(); };
+  if (!l) return fail("Choose a storage location.");
+  if (qRaw === "" || !Number.isInteger(q)) return fail("Enter a whole number for the quantity.");
+  const before = qtyAt(p.id, lid), key = p.id + "|" + lid;
+  if (kind === "IN"){
+    if (q <= 0) return fail("Quantity received must be at least 1.");
+    S.stock[key] = before + q;
+    S.tx.push({id:nid("t"), type:"IN", pid:p.id, lid, qty:q, reason:ref||"—", uid:ui.user.id, at:today()});
+    log("STOCK_IN","stock",`${p.sku} at ${locCode(l)}: ${before} → ${before+q}`);
+    toast(`Stock-in saved: +${q} ${p.unit} at ${locCode(l)}`);
+  }
+  if (kind === "OUT"){
+    if (q <= 0) return fail("Quantity to issue must be at least 1.");
+    if (q > before) return fail(`Insufficient stock: only ${before} ${p.unit} at ${locCode(l)}.`);
+    S.stock[key] = before - q;
+    S.tx.push({id:nid("t"), type:"OUT", pid:p.id, lid, qty:-q, reason:ref, uid:ui.user.id, at:today()});
+    log("STOCK_OUT","stock",`${p.sku} at ${locCode(l)}: ${before} → ${before-q}`);
+    const hadAlert = S.alerts.some(a => a.pid === p.id && !a.read);
+    checkLow(p);
+    toast(isLow(p) ? `Stock-out saved. ${pname(p)} ${variant(p)} is low (${totalQty(p.id)} left)${hadAlert?"; its alert is still on the dashboard.":"; a low-stock alert was added."}` : `Stock-out saved: −${q} ${p.unit} from ${locCode(l)}`);
+  }
+  if (kind === "ADJ"){
+    if (q < 0) return fail("Counted quantity cannot be negative.");
+    if (!ref) return fail("Enter a reason for the adjustment, for example the count date.");
+    const delta = q - before;
+    S.stock[key] = q;
+    S.tx.push({id:nid("t"), type:"ADJUST", pid:p.id, lid, qty:delta, reason:ref, uid:ui.user.id, at:today()});
+    log("ADJUST","stock",`${p.sku} at ${locCode(l)}: ${before} → ${q} (${delta>=0?"+":""}${delta})`);
+    checkLow(p);
+    toast(`Adjustment saved: ${locCode(l)} now ${q} (${delta>=0?"+":""}${delta})`);
+  }
+  for (const k of Object.keys(S.stock)) if (S.stock[k] === 0) delete S.stock[k];
+  ui.flash = {}; render();
+}
+
+function saveProduct(){
+  const g = id => document.getElementById(id).value.trim();
+  const e = ui.edit.product || {};
+  const d = {brand:g("pfBrand"), name:g("pfName"), pn:g("pfPn"), model:g("pfModel"), unit:g("pfUnit")||"pcs", sku:g("pfSku").toUpperCase(), reorder:Number(g("pfReorder")), cat:g("pfCat"), sup:g("pfSup"), barcode:g("pfBarcode")};
+  const fail = m => { ui.flash.product = m; ui.edit.product = Object.assign({}, e, d); render(); };
+  if (!d.brand || !d.name || !d.sku) return fail("Brand, product name and SKU are required.");
+  if (!Number.isInteger(d.reorder) || d.reorder < 0) return fail("Reorder level must be a whole number of 0 or more.");
+  if (S.products.some(p => p.id !== e.id && p.sku === d.sku)) return fail(`SKU ${d.sku} is already used. Each version of a part needs its own SKU.`);
+  if (d.barcode && S.products.some(p => p.id !== e.id && p.barcode === d.barcode)) return fail(`Barcode ${d.barcode} already belongs to another product.`);
+  let p;
+  if (e.id){ p = P(e.id); const wasQr = p.qrGenerated; Object.assign(p, d); if (!d.barcode){ p.barcode = wasQr ? e.barcode : "QR-" + String(Date.now()).slice(-6); p.qrGenerated = true; } else p.qrGenerated = false; log("UPDATE","products",`${p.sku} updated`); toast(`Saved ${pname(p)} ${variant(p)}`); }
+  else { p = Object.assign({id:nid("p")}, d); if (!d.barcode){ p.barcode = "QR-" + String(Date.now()).slice(-6); p.qrGenerated = true; } S.products.push(p); log("CREATE","products",`${p.sku} added${p.qrGenerated?`, QR ${p.barcode} generated`:""}`); toast(p.qrGenerated ? `Added ${pname(p)}. QR code ${p.barcode} generated and saved as its barcode.` : `Added ${pname(p)}`); }
+  ui.flash = {}; ui.edit.product = Object.assign({}, p); render();
+}
+
+/* ---------- events ---------- */
+document.addEventListener("click", e => {
+  const t = e.target.closest("[data-go],[data-act],[data-fill]");
+  if (!t) return;
+  if (t.dataset.fill){ document.getElementById("lgEmail").value = t.dataset.fill; document.getElementById("lgPass").value = "demo123"; return; }
+  if (t.dataset.go) return go(t.dataset.go);
+  const a = t.dataset.act, id = t.dataset.id;
+  if (a === "logout"){ ui.user = null; ui.flash = {}; render(); return; }
+  if (a === "readAlert"){ const al = S.alerts.find(x=>x.id===id); if (al) al.read = true; toast("Alert marked as read"); render(); return; }
+  if (a === "lookup"){ const v = document.getElementById("scanCode").value; if (v.trim()) setScanned(v.trim()); return; }
+  if (a === "editProduct"){ ui.flash = {}; ui.edit.product = Object.assign({}, P(id)); render(); return; }
+  if (a === "newProduct" || a === "cancelEdit"){ ui.flash = {}; ui.edit.product = null; render(); return; }
+  if (a === "toggleSupplier"){ const s = S.suppliers.find(x=>x.id===id); s.status = s.status==="active"?"inactive":"active"; log("UPDATE","suppliers",`${s.name}: status ${s.status}`); toast(`${s.name} is now ${s.status}`); render(); return; }
+  if (a === "toggleUser"){ const u = U(id); u.status = u.status==="active"?"inactive":"active"; log("UPDATE","users",`${u.email}: status ${u.status}`); toast(`${u.name} is now ${u.status}`); render(); return; }
+});
+document.addEventListener("change", e => {
+  const id = e.target.id;
+  if (id === "scanDemo" && e.target.value) return setScanned(e.target.value);
+  if (id === "scanPhoto") return scanPhoto(e.target.files[0]);
+  if (id === "svZone"){ ui.edit.zone = e.target.value; render(); return; }
+  if (id === "rType"){ ui.edit.rtype = e.target.value; render(); return; }
+  if (id === "rFrom" || id === "rTo"){ ui.edit[id==="rFrom"?"from":"to"] = e.target.value; render(); return; }
+  if (id === "aFilter"){ ui.edit.af = e.target.value; render(); return; }
+});
+let svTimer;
+document.addEventListener("input", e => {
+  if (e.target.id === "svQ"){ clearTimeout(svTimer); const v = e.target.value; svTimer = setTimeout(() => { ui.edit.q = v; render(); const el = document.getElementById("svQ"); el.focus(); el.setSelectionRange(v.length, v.length); }, 250); }
+});
+document.addEventListener("keydown", e => {
+  if (e.key === "Enter" && e.target.id === "scanCode"){ e.preventDefault(); if (e.target.value.trim()) setScanned(e.target.value.trim()); }
+});
+document.addEventListener("submit", e => {
+  e.preventDefault();
+  const f = e.target.id;
+  if (f === "loginForm"){
+    const em = document.getElementById("lgEmail").value.trim().toLowerCase(), pw = document.getElementById("lgPass").value;
+    const u = S.users.find(x => x.email === em);
+    if (!u || u.password !== pw){ ui.flash.login = "Invalid email or password."; render(); return; }
+    if (u.status !== "active"){ ui.flash.login = "This account is inactive. Ask an administrator to activate it."; render(); return; }
+    ui.user = u; S.audit.unshift({at:today(), uid:u.id, action:"LOGIN", table:"users", detail:u.email}); go("dashboard"); return;
+  }
+  if (f === "txForm") return submitTx(ui.view==="stockin"?"IN":ui.view==="stockout"?"OUT":"ADJ");
+  if (f === "productForm") return saveProduct();
+  if (f === "supplierForm"){
+    const g = id => document.getElementById(id).value.trim();
+    if (!g("sfName") || !g("sfContact")){ ui.flash.supplier = "Supplier name and contact person are required."; render(); return; }
+    S.suppliers.push({id:nid("s"), name:g("sfName"), contactPerson:g("sfContact"), phone:g("sfPhone"), email:g("sfEmail"), status:"active"});
+    log("CREATE","suppliers",g("sfName")); ui.flash = {}; toast("Supplier saved"); render(); return;
+  }
+  if (f === "locationForm"){
+    const g = id => document.getElementById(id).value.trim().toUpperCase();
+    const z=g("lfZone"), r=g("lfRack").padStart(2,"0"), s=g("lfShelf").padStart(2,"0");
+    if (!z || !g("lfRack") || !g("lfShelf")){ ui.flash.location = "Zone, rack and shelf are all required."; render(); return; }
+    if (S.locations.some(l => l.zone===z && l.rack===r && l.shelf===s)){ ui.flash.location = `Location ${z}-${r}-${s} already exists.`; render(); return; }
+    S.locations.push({id:nid("l"), zone:z, rack:r, shelf:s, desc:document.getElementById("lfDesc").value.trim()});
+    log("CREATE","locations",`${z}-${r}-${s}`); ui.flash = {}; toast(`Location ${z}-${r}-${s} saved`); render(); return;
+  }
+  if (f === "userForm"){
+    const g = id => document.getElementById(id).value.trim();
+    const em = g("ufEmail").toLowerCase();
+    if (!g("ufName") || !em){ ui.flash.user = "Name and email are required."; render(); return; }
+    if (S.users.some(u => u.email === em)){ ui.flash.user = `${em} already has an account.`; render(); return; }
+    if (document.getElementById("ufPass").value.length < 8){ ui.flash.user = "The temporary password must have at least 8 characters."; render(); return; }
+    S.users.push({id:nid("u"), name:g("ufName"), email:em, role:g("ufRole"), status:"active", password:document.getElementById("ufPass").value});
+    log("CREATE","users",em); ui.flash = {}; toast("User saved"); render(); return;
+  }
+});
+
+render();
+})();
+</script>

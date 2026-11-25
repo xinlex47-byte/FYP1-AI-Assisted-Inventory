@@ -16,8 +16,8 @@ Small automotive spare parts shops often record stock on paper or in spreadsheet
 
 | Folder | Contents |
 |---|---|
-| `01_Report/` | Not included in this public repository; the report is submitted to the university separately |
-| `02_Presentation/` | Presentation slides (to be added) |
+| `01_Report/` | FYP1 report (IEEE referencing) |
+| `02_Presentation/` | Presentation slides (PowerPoint, with speaker notes) |
 | `03_Prototype/` | Clickable HTML prototype (open `StockLine_Prototype.html` in a browser; it uses sample data only) |
 | `04_Diagrams/` | draw.io source files (use case, class, ERD, DFD, activity, sequence diagrams and wireframes) and exported figures named by report figure number |
 | `05_References/` | Reference checklist with links to every cited source |
